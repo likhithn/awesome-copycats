@@ -14,6 +14,9 @@ local dpi   = require("beautiful.xresources").apply_dpi
 local string, os = string, os
 local my_table = awful.util.table or gears.table -- 4.{0,1} compatibility
 
+-- Import mywidget (now includes weather)
+local mywidget = require("mywidget")
+
 local theme                                     = {}
 theme.default_dir                               = require("awful.util").get_themes_dir() .. "default"
 theme.icon_dir                                  = os.getenv("HOME") .. "/.config/awesome/themes/holo/icons"
@@ -101,14 +104,24 @@ local blue   = "#80CCE6"
 local space3 = markup.font("Roboto 3", " ")
 
 -- Clock
-local mytextclock = wibox.widget.textclock(markup("#FFFFFF", space3 .. "%H:%M   " .. markup.font("Roboto 4", " ")))
+local mytextclock = wibox.widget.textclock(markup("#FFFFFF", space3 .. "%H:%M:%S   " .. markup.font("Roboto 5", " ")))
 mytextclock.font = theme.font
 local clock_icon = wibox.widget.imagebox(theme.clock)
 local clockbg = wibox.container.background(mytextclock, theme.bg_focus, gears.shape.rectangle)
 local clockwidget = wibox.container.margin(clockbg, dpi(0), dpi(3), dpi(5), dpi(5))
 
+-- Create a timer that updates the clock every second
+local clock_timer = gears.timer({
+    timeout = 1,  -- Timeout is set to 1 second
+    call_now = true,  -- This ensures the clock updates immediately when Awesome starts
+    autostart = true,  -- Start the timer when the script is loaded
+    callback = function()
+        mytextclock:set_markup(markup("#FFFFFF", space3 .. os.date("%H:%M:%S") .. "   " .. markup.font("Roboto 5", " ")))
+    end
+})
+
 -- Calendar
-local mytextcalendar = wibox.widget.textclock(markup.fontfg(theme.font, "#FFFFFF", space3 .. "%d %b " .. markup.font("Roboto 5", " ")))
+local mytextcalendar = wibox.widget.textclock(markup.fontfg(theme.font, "#FFFFFF", space3 .. "%a %d %b " .. markup.font("Roboto 5", " ")))
 local calendar_icon = wibox.widget.imagebox(theme.calendar)
 local calbg = wibox.container.background(mytextcalendar, theme.bg_focus, gears.shape.rectangle)
 local calendarwidget = wibox.container.margin(calbg, dpi(0), dpi(0), dpi(5), dpi(5))
@@ -258,14 +271,13 @@ local net = lain.widget.net({
 local netbg = wibox.container.background(net.widget, theme.bg_focus, gears.shape.rectangle)
 local networkwidget = wibox.container.margin(netbg, dpi(0), dpi(0), dpi(5), dpi(5))
 
--- Weather
---[[ to be set before use
-theme.weather = lain.widget.weather({
-    --APPID =
-    city_id = 2643743, -- placeholder (London)
-    notification_preset = { font = "Monospace 9", position = "bottom_right" },
-})
---]]
+-- MyWidget (Sun widget with integrated weather)
+local mywidgetbg = wibox.container.background(mywidget, theme.bg_focus, gears.shape.rectangle)
+local mywidgetcontainer = wibox.container.margin(mywidgetbg, dpi(0), dpi(0), dpi(5), dpi(5))
+
+-- Notes widget (one-line preview; opens editor on click)
+local notes_widget = nil
+pcall(function() notes_widget = require('widget.notes') end)
 
 -- Launcher
 local mylauncher = awful.widget.button({ image = theme.awesome_icon_launcher })
@@ -342,18 +354,14 @@ function theme.at_screen_connect(s)
             layout = wibox.layout.fixed.horizontal,
             wibox.widget.systray(),
             --theme.mail.widget,
-            --bat.widget,
+            -- bat.widget,
             spr_right,
-            musicwidget,
+            -- musicwidget,
             bar,
-            prev_icon,
-            next_icon,
-            stop_icon,
-            play_pause_icon,
-            bar,
-            mpd_icon,
+            mywidgetcontainer,
             bar,
             spr_very_small,
+            (notes_widget or wibox.widget.textbox('')), -- notes preview
             volumewidget,
             spr_left,
         },
